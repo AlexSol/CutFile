@@ -8,8 +8,47 @@
 
 using namespace std;
 
+void argError(const char* arg);
+void printError(int errorCode);
+
 int main(int argc, char **argv)
 {
+    char parametertTextCut[]  = "-c";
+    char parametertTextJoin[] = "-j";
+    char parametertTextSize[] = "-s";
+
+    if( argc >= 4){
+        if ( strcmp(parametertTextCut, argv[1]) == NULL ){
+            if( strcmp(parametertTextSize, argv[2]) == NULL ){
+
+                if( atoi(argv[3]) != 0 ){ //size outFile
+
+                    FileIO inFile;
+                    if( inFile.FileOpen(argv[4], GENERIC_READ) != false ){
+
+
+                    }else{
+                        printError(inFile.GetErro());
+                    }
+
+                }else{
+                    cout<< "outFile does not have zero size" << endl;
+                }
+            }else{
+                argError(argv[2]);
+            }
+
+
+            }else{
+                if( strcmp(parametertTextJoin, argv[1]) == NULL){
+                    cout<< "test ver." << endl;
+                }else{
+                    argError(argv[1]);
+                }
+            }
+    }
+
+    return 0;
     if(argc == 4){
         char* inFileName = argv[1];
         char* ouFileName = argv[2];
@@ -61,5 +100,23 @@ int main(int argc, char **argv)
     else{
         cout<< "not opt!" << endl;
         return 1;
+    }
+}
+
+void argError(const char* arg)
+{
+    cout<<"CutFile does not have this parameter - "<< arg << endl;
+}
+
+void printError(int errorCode)
+{
+    cout<< "Error code: " << errorCode << endl;
+
+    switch (errorCode)
+    {
+        case 0x2:
+            cout<< "ERROR_FILE_NOT_FOUND"<< endl
+            << "The system cannot find the file specified." << endl;
+        break;
     }
 }
