@@ -3,13 +3,13 @@
 #include <string>
 #include <math.h>
 #include "FileIO.h"
-//#include "winerror.h"
 //#include "SystemErrorCodes.h"
 
 using namespace std;
 
 void argError(const char* arg);
 void printError(int errorCode);
+BOOL DirectoryExists(const char* dirName);
 
 int main(int argc, char **argv)
 {
@@ -21,31 +21,39 @@ int main(int argc, char **argv)
         if ( strcmp(parametertTextCut, argv[1]) == NULL ){
             if( strcmp(parametertTextSize, argv[2]) == NULL ){
 
-                if( atoi(argv[3]) != 0 ){ //size outFile
-
+                if( atoi(argv[3]) == 0 ){ //size outFile
+                    cout<< "outFile does not have zero size" << endl;
+                }else{
                     FileIO inFile;
+
                     if( inFile.FileOpen(argv[4], GENERIC_READ) != false ){
+
+                        if(DirectoryExists(argv[5]) == NULL){
+                            cout<< "Error: out directory name is invalid." << endl;
+                        }else{
+
+                        }
 
 
                     }else{
                         printError(inFile.GetErro());
+                        return 1;
                     }
 
-                }else{
-                    cout<< "outFile does not have zero size" << endl;
                 }
             }else{
                 argError(argv[2]);
+                return 1;
             }
 
-
+        }else{
+            if( strcmp(parametertTextJoin, argv[1]) == NULL){
+                    cout<< "test ver. " << endl;
             }else{
-                if( strcmp(parametertTextJoin, argv[1]) == NULL){
-                    cout<< "test ver." << endl;
-                }else{
-                    argError(argv[1]);
-                }
+                argError(argv[1]);
+                return 1;
             }
+        }
     }
 
     return 0;
@@ -110,13 +118,41 @@ void argError(const char* arg)
 
 void printError(int errorCode)
 {
-    cout<< "Error code: " << errorCode << endl;
+    cout<< "Error code: " << errorCode << "\n\n";
 
     switch (errorCode)
     {
-        case 0x2:
-            cout<< "ERROR_FILE_NOT_FOUND"<< endl
+        case 2:
+            cout<< "ERROR_FILE_NOT_FOUND" << endl
             << "The system cannot find the file specified." << endl;
         break;
+
+        case 3:
+            cout<< "ERROR_PATH_NOT_FOUND" << endl
+            << "The system cannot find the path specified." << endl;
+        break;
+
+        case 4:
+            cout<< "ERROR_TOO_MANY_OPEN_FILES" << endl
+            << "The system cannot open the file." << endl;
+        break;
+
+        case 5:
+            cout<< "ERROR_ACCESS_DENIED" << endl
+            << "Access is denied." << endl;
+        break;
+
+        case 32:
+            cout<< "ERROR_SHARING_VIOLATION" << endl
+            << "The process cannot access the file because it is being used by another process." << endl;
+        break;
     }
+}
+
+BOOL DirectoryExists(const char* dirName) {
+      DWORD attribs = ::GetFileAttributesA(dirName);
+      if (attribs == INVALID_FILE_ATTRIBUTES) {
+        return false;
+      }
+      return (attribs & FILE_ATTRIBUTE_DIRECTORY);
 }
