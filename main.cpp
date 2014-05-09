@@ -21,10 +21,16 @@ void printError(int errorCode);
 BOOL DirectoryExists(const char* dirName);
 bool askNumber(const char*);
 bool Commandline(int argc, char **argv);
+bool ParSize(char *argv);
+
+void strlow(char* str);
+char* firstABC(char* str);
 
 int main(int argc, char **argv)
 {
-    Commandline(argc, argv);
+    char *argv1[] = {"tst.exe","-b","-s","1mB"};
+    int argc1 = 4;
+    Commandline(argc1, argv1);
     return 0;
 /*
     if( argc >= 4){
@@ -56,13 +62,6 @@ int main(int argc, char **argv)
                 return 1;
             }
 
-        }else{
-            if( strcmp(ParametertCreateBatText, argv[1]) == NULL){
-                    cout<< "test ver. " << endl;
-            }else{
-                argError(argv[1]);
-                return 1;
-            }
         }
     }
 */
@@ -166,6 +165,121 @@ BOOL DirectoryExists(const char* dirName) {
       return (attribs & FILE_ATTRIBUTE_DIRECTORY);
 }
 
+bool Commandline(int argc, char **argv)
+{
+    const char ParMakeBat[]   = "-b";
+    const char ParNumber[]    = "-n";
+
+    if( argc == 1){
+        cout<< "not parameterts" << endl;
+        return true;
+    }
+
+    for( int i = 1; i<argc-1; i++)
+    {
+        if( strcmp(argv[i], ParMakeBat ) == NULL ){
+                setup.MakeBatFile = true;
+                continue;
+        }
+
+        if( (strcmp(argv[i], ParNumber) == NULL) && setup.FileCutSize == false ){
+            int number = atoi(argv[i+1]);
+
+            if( number != 0 ){
+                setup.FileCutNumber = true;
+                setup.NumberFile = number;
+                cout<< setup.NumberFile << endl;
+                continue;
+            }else{
+                cout<< "Error in command syntax. - "<< argv[i+1]<< endl;
+                break;
+            }
+        }
+
+        ParSize(argv[i]);
+    }
+}
+
+bool ParSize(char *argv)
+{
+    const char ParSize[]      = "-s";
+
+    const char byte[]     = "b";
+    const char kilobyte[] = "kb";
+    const char megabyte[] = "mb";
+    const char gigabyte[] = "gb";
+
+    if( (strcmp(argv, ParSize ) == NULL) && (setup.FileCutNumber == false) ){
+        int nsize = atoi(argv+1);
+
+        if( nsize != 0 ){
+            setup.FileCutSize = true;
+            setup.SizeFile = nsize;
+
+            const char *pStr = firstABC(argv+1);
+            const int len = strlen(pStr);
+
+            if( (pStr != NULL) && (len <= 2) ){
+                char str[3] = {0};
+                strncpy(str, pStr, 2);
+                strlow(str);
+
+                if( len == 1){
+                    if( strcmp(str, byte) == NULL ){
+                        return 0;
+                    }else{
+                        cout<< "Error in command syntax." << endl;
+                        return 1;
+                    }
+                }else{
+                    if( strcmp(str, kilobyte) == NULL ){
+                        setup.SizeFile <<= 10;
+                        return 0;
+                    }
+
+                    if( strcmp(str, megabyte) == NULL ){
+                        setup.SizeFile <<= 20;
+                        return 0;
+                    }
+
+                    if( strcmp(str, gigabyte) == NULL ){
+                        setup.SizeFile <<= 30;
+                        return 0;
+                    }
+                    cout<< "Error in command syntax." << endl;
+                    return 1;
+                    }
+                }else{
+                    cout<< "Error in command syntax." << endl;
+                    return 1;
+                }
+            }else{
+                cout<< "invalid size - " << *argv+1 << endl;
+                return 1;
+            }
+        }else{
+            cout<< "Error in command syntax." << endl;
+            return 1;
+    }
+}
+
+void strlow(char* str)
+{
+    while( *str ){
+        if( *str >= 'A' && *str <= 'Z' ) *str += 32;
+        ++str;
+    }
+}
+
+char* firstABC(char* str)
+{
+    while( *str ){
+       if( (*str >= 'a' && *str <= 'z') || (*str >= 'A' && *str <= 'Z') ) return str;
+       str++;
+    }
+    return NULL;
+}
+
 bool askNumber(const char* str)
 {
     if( *str >= '1' && *str <= '9' ){
@@ -175,84 +289,3 @@ bool askNumber(const char* str)
     return false;
 }
 
-bool Commandline(int argc, char **argv)
-{
-    char ParMakeBat[]   = "-b";
-    char ParSize[]      = "-s";
-    char ParNumber[]    = "-n";
-    //char ParametertCutText[]       = "-c";
-
-    char byte[]     = "b";
-    char kilobyte[] = "kb";
-    char megabyte[] = "mb";
-    char gigabyte[] = "gb";
-    //char terabyte[] = "tb";
-
-    if( argc == 1){
-        cout<< "not parameterts" << endl;
-        return true;
-    }
-
-    for( int i = 1; i<argc; i++)
-    {
-        if( strcmp(argv[i], ParMakeBat) == NULL ){ setup.MakeBatFile = true;};
-
-        if( strcmp(argv[i], ParNumber) == NULL ){
-            int number = atoi(argv[i+1]);
-            if( number != 0 ){
-                setup.FileCutNumber = true;
-                setup.NumberFile = number;
-                cout<< setup.NumberFile << endl;
-                i++;
-            }else{
-                cout<< "invalid number file - "<< argv[i+1]<< endl;;
-            }
-        }
-
-        if( strcmp(argv[i], ParSize) == NULL ){
-            int nsize = atoi(argv[i+1]);
-            if( nsize != 0){
-                setup.FileCutSize = true;
-                setup.SizeFile = nsize;
-                for(int j = 1; j<strlen(argv[i+1]); j++)
-                {
-                    if( argv[i+1][j] >= 'A'){
-                            if( argv[i+1][j] == 'b' ){
-                                //setup.SizeFile = nsize;
-                                cout<< byte << endl;
-                                break;
-                            }
-                            if( argv[i+1][j] == 'k' && argv[i+1][j+1] == 'b' ){
-                                setup.SizeFile <<= 10;
-                                cout<< kilobyte << endl;
-                                break;
-                            }
-                            if( argv[i+1][j] == 'm' && argv[i+1][j+1] == 'b' ){
-                                setup.SizeFile <<= 20;
-                                cout<< megabyte << endl;
-                                break;
-                            }
-                            if( argv[i+1][j] == 'g' && argv[i+1][j+1] == 'b' ){
-                                setup.SizeFile <<= 30;
-                                cout<< gigabyte << endl;
-                                break;
-                            }
-                           /* if( argv[i+1][j] == 't' && argv[i+1][j+1] == 'b' ){
-                                setup.SizeFile <<= 40;
-                                cout<< gigabyte << endl;
-                                break;
-                           }
-                           */
-                            cout<< "invalid storage unit - "<< argv[i+1] << argv[i+2] << endl;
-                            break;
-                    }
-                }
-                i++;
-            }else{
-                cout<< "invalid size - " << argv[i+1] << endl;
-            }
-        }
-
-       cout<< setup.SizeFile << endl;
-    }
-}
