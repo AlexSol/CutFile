@@ -1,6 +1,5 @@
 mSplit File
 ===========
-<<<<<<< Updated upstream
 console file splitter. The program is available on Windows.
 ```
 =======
@@ -24,6 +23,3 @@ Suffixes:
 <<<<<<< Updated upstream
 Examples: mSplit -sb 50m filename
 ```
-=======
-Examples: mSplit -sb 50m filename
->>>>>>> Stashed changes
