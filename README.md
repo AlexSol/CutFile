@@ -6,7 +6,6 @@ console file splitter. The program is available on Windows.
 Description:
 	console file splitter. The program is available on Windows.
 
->>>>>>> Stashed changes
 Usege: mSplit [-sb] [SIZE suffix] [in-file_name] [out-directory]
 
 Commands:
