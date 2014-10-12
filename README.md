@@ -19,7 +19,6 @@ Suffixes:
 	m: Megabyte
 	g: Gigabyte
 	t: Terabyte
-
-<<<<<<< Updated upstream
+	
 Examples: mSplit -sb 50m filename
 ```
