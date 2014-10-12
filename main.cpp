@@ -1,291 +1,439 @@
-#include <windows.h>
-#include <iostream>
+#include <memory>
+#include <cstdio>
+#include <vector>
+//#include <cstring>
 #include <string>
-#include <math.h>
+#include <ctype.h>
+
 #include "FileIO.h"
-//#include "SystemErrorCodes.h"
+#include "version.h"
 
-using namespace std;
+//using namespace std;
 
-struct setting
-    {
-        bool MakeBatFile;
-        bool FileCutNumber;
-        bool FileCutSize;
-        unsigned int NumberFile;
-        unsigned __int64 SizeFile;
-    } setup;
+typedef long long int int64;
+const unsigned int NOT_FOUNF_FILE = 1;
 
-void argError(const char* arg);
-void printError(int errorCode);
-BOOL DirectoryExists(const char* dirName);
-bool askNumber(const char*);
-bool Commandline(int argc, char **argv);
-bool ParSize(char *argv);
-
-void strlow(char* str);
-char* firstABC(char* str);
-
-int main(int argc, char **argv)
+struct cmd
 {
-    char *argv1[] = {"tst.exe","-b","-s","1mB"};
-    int argc1 = 4;
-    Commandline(argc1, argv1);
-    return 0;
-/*
-    if( argc >= 4){
-        if ( strcmp(ParametertCutText, argv[1]) == NULL ){
-            if( strcmp(ParametertSizeText, argv[2]) == NULL ){
+	 unsigned int sizeBuffer = 256*1024;  // 256 K bytes
+	 bool makeBatFile;
+	 //bool fileCutNumber;
+	 bool splitSize;
+	 int64 outFileSize;
+	 int64 inFileSize;
+	 std::string inFile;
+	 std::string outDir;
+	 std::string outFile;
 
-                if( atoi(argv[3]) == 0 ){ //size outFile
-                    cout<< "outFile does not have zero size" << endl;
-                }else{
-                    FileIO inFile;
+	 cmd()
+	 {
+		  makeBatFile = false;
+		  splitSize = false;
+	 };
 
-                    if( inFile.FileOpen(argv[4], GENERIC_READ) != false ){
+};
+//
+void argError(const char* arg);
+char *GetFirstABC(char* str);
+void StrToLower(char* str);
 
-                        if(DirectoryExists(argv[5]) == NULL){
-                            cout<< "Error: out directory name is invalid." << endl;
-                        }else{
+bool GetSetupCommand(struct cmd *setup, const int argc, char **argv);
+void GetDirFromFullPath(const char* path, char* dir);
 
-                        }
+void GetFileFromFullPath(const char* path, char* file);
+
+bool CreateBatFile(std::string &listBarFile, const char *outFile, const char *outDir);
+
+void prefixFile(int numFile, char* resultBuffer);
+
+int main(int argc, char *argv[])
+{
+	 std::auto_ptr<cmd> pSetup(new cmd);
+
+	 if( GetSetupCommand( pSetup.get(), argc, argv) != false )
+	 {
+		  return 1;
+	 }
+	 else
+	 {
+		  try
+		  {
+			   std::auto_ptr<FileIO> pInFile(new FileIO);
+				std::auto_ptr<FileIO> pOutFile(new FileIO);
+				pInFile->FileOpen(pSetup->inFile.c_str(), GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING);
+
+				unsigned int iSizeBuffer = pSetup->sizeBuffer;
+
+				DWORD *pvBuffer = new DWORD[iSizeBuffer];
+
+				std::string outNameFile = pSetup->outFile + ".";
+				std::string outFile = pSetup->outDir;
+
+				std::string CommandLine;
+
+				DWORD nReadBytes = 0;
+				DWORD nWriteBytes = 0;
+
+				pInFile->SetPointer(0, FILE_BEGIN);
+				pOutFile->SetPointer(0,FILE_BEGIN);
+
+				int64 potSizeFile = pSetup->outFileSize;
+				unsigned int nByteFofRead = iSizeBuffer;
+				static int IndexFile = 0;
+				bool bCreateFile = true;
+
+				while(true)
+				{
+					 if(nByteFofRead >= potSizeFile)
+					 {
+						  nByteFofRead = potSizeFile;
+						  potSizeFile = 0;
+					 }
+
+					 pInFile->Read(pvBuffer, nByteFofRead, &nReadBytes);
+
+					 if(nReadBytes > 0)
+					 {
+						  if(bCreateFile)
+						  {
+								nByteFofRead = iSizeBuffer;
+								++IndexFile;
+								char temp[6] = {0};
+								prefixFile(IndexFile, temp);
+
+								outFile = pSetup->outDir + outNameFile + temp;
+
+								if(pSetup->makeBatFile){
+									 CommandLine += outNameFile + temp;
+									 CommandLine += " + ";
+								}
+
+								pOutFile->FileOpen(outFile.c_str(), GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS);
+						  }
+						  bCreateFile = false;
+					 }
+					 else
+					 {
+						  break;
+					 }
+
+					 if(nByteFofRead < potSizeFile)
+					 {
+						  potSizeFile -= iSizeBuffer;
+					 }
+
+					 pOutFile->Write(pvBuffer, nReadBytes, &nWriteBytes);
+
+					 if(potSizeFile == 0)
+					 {
+						  bCreateFile = true;
+						  potSizeFile = pSetup->outFileSize;
+						  pOutFile->Close();
+					 }
+				}
+
+//            delete pInFile;
+//            delete pOutFile;
+				delete []pvBuffer;
+				if(pSetup->makeBatFile){
+					 CreateBatFile(CommandLine, pSetup->outFile.c_str(), pSetup->outDir.c_str());
+				}
+		  }
+		  catch (DWORD &codErro)
+		  {
+				std::auto_ptr<char> lpszBuffer(new(char[255]));
+				DWORD cchBuffer = 255;
+				::FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, codErro, NULL, lpszBuffer.get(), cchBuffer, NULL);
+				printf("Error Code: %d\nError Name: %s", static_cast<unsigned int>(codErro), lpszBuffer.get());
+		  }
+		  catch(...)
+		  {
+				printf("\ncatch(...)\n");
+		  }
+	 }
 
 
-                    }else{
-                        printError(inFile.GetErro());
-                        return 1;
-                    }
+	 return 0;
+}
 
-                }
-            }else{
-                argError(argv[2]);
-                return 1;
-            }
+bool GetSetupCommand(struct cmd *setup, const int argc, char **argv)
+{
+	 if(argc == 1)
+	 {
+		  printf("%s\n\n",PROGRAM_NAME_STRING " v" VERSION_STRING );
+		  printf(
+				"Usege: mSplit [-sb] [SIZE suffix] [in-file_name] [out-directory]\n\n"
+				"Commands:\n"
+				"  -s: write SIZE bytes per output file\n"
+				"  -b: make Bat-file\n"
+				"\n"
+				"Suffixes:\n"
+				"  b: byte\n"
+				"  k: kilobyte\n"
+				"  m: megabyte\n"
+				"  g: gigabyte\n"
+				"  t: terabyte\n"
+				"\n"
+				"Examples: mSplit -sb 50m filename\n"
+		  );
+		  return true;
+	 }
 
-        }
-    }
-*/
-    if(argc == 4){
-        char* inFileName = argv[1];
-        char* ouFileName = argv[2];
-        FileIO f;
-        FileIO fout;
+	 if(argc < 4)
+	 {
+		  printf("incorrect command");
+		  return true;
+	 }
 
-       f.FileOpen(inFileName, GENERIC_READ);
+	 try
+	 {
+		  if(strlen(argv[1]) <=1 || strlen(argv[1]) > 3)
+		  {
+				throw argv[1];
+		  }
 
-        fout.FileOpen(ouFileName, GENERIC_WRITE, FILE_SHARE_READ, CREATE_ALWAYS);
-        cout<< argv[0] << endl
-            << argv[1] << endl
-            << argv[2] << endl
-            << argv[3] << endl;
-        TCHAR outFileName[] = "";
-        TCHAR outFileNameMaska[] = "001";
+		  std::auto_ptr<char> command(new char[strlen(argv[1])+2]);
+		  strcpy(command.get(), argv[1]);
+		  StrToLower(command.get());
 
-        return 0;
+		  if(command.get()[0] != '-')
+		  {
+				throw argv[1];
+		  }
+		  else
+		  {
+//        char *p = strchr(command.get(), 'b');
+//            if(p == 0)
+//       if( *(  ) != 'b' ){
+//          throw argv[1];
+//       }else{
+//          setup->makeBatFile = true;
+//       }
+				if( command.get()[1] != 's' )
+				{
+					 throw argv[1];
+				}
+				else
+				{
+					 if( command.get()[2] != 'b' && command.get()[2] != 0 )
+					 {
+						  throw argv[1];
+					 }
+					 else
+					 {
+						  if(command.get()[2] == 'b')
+						  {
+								setup->makeBatFile = true;
+						  }
+					 }
+					 setup->splitSize = true;
 
-        unsigned int sizeBuffer =   4096*1024;
-        unsigned char* buffer = new unsigned char[sizeBuffer];
+					 unsigned int nsize = atoi(argv[2]);
+					 setup->outFileSize = nsize;
 
-        DWORD dwBytesRead = sizeBuffer;
-        DWORD dwBytesResult = 0;
-        DWORD dwBytesWriteResult = 0;
+					 if(nsize == 0)
+					 {
+						  throw argv[2];
+					 }
+					 else
+					 {
+						  std::auto_ptr<char> suffixCommand(new char[strlen(argv[2])+1]);
+						  strcpy(suffixCommand.get(), argv[2]);
 
-        LONGLONG inputFile = 0;
-        LONGLONG uotFile = 0;
+						  const char *pStr = GetFirstABC(suffixCommand.get());
+						  const int len = strlen(pStr);
 
-        f.SetPointer( inputFile, FILE_BEGIN);
-        fout.SetPointer( uotFile, FILE_BEGIN);
+						  if(pStr == NULL || len >1)
+						  {
+								throw argv[2];
+						  }
+						  else
+						  {
+								StrToLower(suffixCommand.get());
+								const char opt = *pStr;
+								switch (opt)
+								{
+								case 'b':
+									 break;
+								case 'k':
+									 setup->outFileSize <<= 10;
+									 if( setup->outFileSize <= 0) {throw 1;}
+									 break;
+								case 'm':
+									 setup->outFileSize <<= 20;
+									 if( setup->outFileSize <= 0) {throw 1;}
+									 break;
+								case 'g':
+									 setup->outFileSize <<= 30;
+									 if( setup->outFileSize <= 0) {throw 1;}
+									 break;
+								case 't':
+									 setup->outFileSize <<= 40;
+									 if( setup->outFileSize <= 0) {throw 1;}
+									 break;
+								default:
+									 throw argv[2];
+									 break;
+								}
+						  }
+					 }
+				}
+		  }
+	 }
+    catch (const char *str)
+	 {
+		  argError(str);
+		  return true;
+	 }
+    catch (const int OverValue)
+	 {
+		  printf("%s\n", "overflow value-> size outFile");
+		  return true;
+	 }
 
 
-        while(f.Read(buffer, dwBytesRead, dwBytesResult) != NULL)
-        {
 
-            fout.Write(buffer,dwBytesResult, &dwBytesWriteResult);
+	 std::auto_ptr<FileIO> inFile( new FileIO );
+	 if( inFile->FileOpen(argv[3],GENERIC_READ) == false )
+	 {
+		  printf("can not open input file: ");
+		  printf(argv[3]);
+		  printf("\n");
+		  return true;
+	 }
+	 else
+	 {
+		  setup->inFile = argv[3];
+		  setup->inFileSize = inFile->GetSize();
 
-            inputFile += dwBytesRead;
-            f.SetPointer( inputFile, FILE_BEGIN);
+		  char *tempNameFile = new char[strlen(argv[3])+1];
 
-            uotFile += dwBytesResult;
-            fout.SetPointer( uotFile, FILE_BEGIN);
-        }
+		  GetFileFromFullPath(argv[3], tempNameFile);
+		  setup->outFile = tempNameFile;
 
-        delete []buffer;
+		  delete[] tempNameFile;
+	 }
 
-        return 0;
-    }
-    else{
-        cout<< "not opt!" << endl;
-        return 1;
-    }
+	 if(argc != 4)
+	 {
+		  if( ::GetFileAttributes(argv[4]) == INVALID_FILE_ATTRIBUTES)
+		  {
+				printf("can not found directory: ");
+				printf(argv[4]);
+				printf("\n");
+				return 1;
+		  }
+		  else
+		  {
+				setup->outDir = argv[4];
+				return false;
+		  }
+	 }
+	 else
+	 {
+		  char *tempPath = new char[strlen(argv[3])+1];
+		  GetDirFromFullPath(argv[3], tempPath);
+		  setup->outDir = tempPath;
+		  delete[] tempPath;
+	 }
+	 return false;
 }
 
 void argError(const char* arg)
 {
-    cout<<"CutFile does not have this parameter - "<< arg << endl;
+	 printf("incorrect command: ");
+	 printf(arg);
+	 printf("\n\n");
 }
 
-void printError(int errorCode)
+char* GetFirstABC(char *str)
 {
-    cout<< "Error code: " << errorCode << "\n\n";
-
-    switch (errorCode)
-    {
-        case 2:
-            cout<< "ERROR_FILE_NOT_FOUND" << endl
-            << "The system cannot find the file specified." << endl;
-        break;
-
-        case 3:
-            cout<< "ERROR_PATH_NOT_FOUND" << endl
-            << "The system cannot find the path specified." << endl;
-        break;
-
-        case 4:
-            cout<< "ERROR_TOO_MANY_OPEN_FILES" << endl
-            << "The system cannot open the file." << endl;
-        break;
-
-        case 5:
-            cout<< "ERROR_ACCESS_DENIED" << endl
-            << "Access is denied." << endl;
-        break;
-
-        case 32:
-            cout<< "ERROR_SHARING_VIOLATION" << endl
-            << "The process cannot access the file because it is being used by another process." << endl;
-        break;
-    }
+	 while(*str)
+	 {
+//        if( *str >= 'a' && *str <= 'z' ) return str;
+		  if( isalpha(*str) ) return str;
+		  ++str;
+	 }
+	 return NULL;
 }
 
-BOOL DirectoryExists(const char* dirName) {
-      DWORD attribs = ::GetFileAttributesA(dirName);
-      if (attribs == INVALID_FILE_ATTRIBUTES) {
-        return false;
-      }
-      return (attribs & FILE_ATTRIBUTE_DIRECTORY);
-}
-
-bool Commandline(int argc, char **argv)
+void StrToLower(char *str)
 {
-    const char ParMakeBat[]   = "-b";
-    const char ParNumber[]    = "-n";
-
-    if( argc == 1){
-        cout<< "not parameterts" << endl;
-        return true;
-    }
-
-    for( int i = 1; i<argc-1; i++)
-    {
-        if( strcmp(argv[i], ParMakeBat ) == NULL ){
-                setup.MakeBatFile = true;
-                continue;
-        }
-
-        if( (strcmp(argv[i], ParNumber) == NULL) && setup.FileCutSize == false ){
-            int number = atoi(argv[i+1]);
-
-            if( number != 0 ){
-                setup.FileCutNumber = true;
-                setup.NumberFile = number;
-                cout<< setup.NumberFile << endl;
-                continue;
-            }else{
-                cout<< "Error in command syntax. - "<< argv[i+1]<< endl;
-                break;
-            }
-        }
-
-        ParSize(argv[i]);
-    }
+	 while (*str)
+	 {
+		  *str = tolower(*str);
+		  ++str;
+	 }
+	 *(str) = '\0';
+}
+void GetDirFromFullPath(const char* path, char* dir)
+{
+	 strcpy(dir, path);
+	 char *p = strrchr(dir, '\\');
+	 *(++p) = '\0';
 }
 
-bool ParSize(char *argv)
+void GetFileFromFullPath(const char* path, char* file)
 {
-    const char ParSize[]      = "-s";
-
-    const char byte[]     = "b";
-    const char kilobyte[] = "kb";
-    const char megabyte[] = "mb";
-    const char gigabyte[] = "gb";
-
-    if( (strcmp(argv, ParSize ) == NULL) && (setup.FileCutNumber == false) ){
-        int nsize = atoi(argv+1);
-
-        if( nsize != 0 ){
-            setup.FileCutSize = true;
-            setup.SizeFile = nsize;
-
-            const char *pStr = firstABC(argv+1);
-            const int len = strlen(pStr);
-
-            if( (pStr != NULL) && (len <= 2) ){
-                char str[3] = {0};
-                strncpy(str, pStr, 2);
-                strlow(str);
-
-                if( len == 1){
-                    if( strcmp(str, byte) == NULL ){
-                        return 0;
-                    }else{
-                        cout<< "Error in command syntax." << endl;
-                        return 1;
-                    }
-                }else{
-                    if( strcmp(str, kilobyte) == NULL ){
-                        setup.SizeFile <<= 10;
-                        return 0;
-                    }
-
-                    if( strcmp(str, megabyte) == NULL ){
-                        setup.SizeFile <<= 20;
-                        return 0;
-                    }
-
-                    if( strcmp(str, gigabyte) == NULL ){
-                        setup.SizeFile <<= 30;
-                        return 0;
-                    }
-                    cout<< "Error in command syntax." << endl;
-                    return 1;
-                    }
-                }else{
-                    cout<< "Error in command syntax." << endl;
-                    return 1;
-                }
-            }else{
-                cout<< "invalid size - " << *argv+1 << endl;
-                return 1;
-            }
-        }else{
-            cout<< "Error in command syntax." << endl;
-            return 1;
-    }
+	 const char *p = strrchr(path, '\\');
+	 ++p;
+	 strcpy(file, p);
 }
 
-void strlow(char* str)
+void prefixFile(int numFile, char* resultBuffer)
 {
-    while( *str ){
-        if( *str >= 'A' && *str <= 'Z' ) *str += 32;
-        ++str;
-    }
+	 char templatePrefix[16] ="000";
+
+	 int indexFile = numFile;
+	 strcpy(resultBuffer, templatePrefix);
+
+	 const int sizeBuffer = 10;
+	 char buffer[sizeBuffer]= {0};
+
+	 sprintf(buffer, "%d", indexFile);
+
+	 int lenBuffer = strlen(buffer);
+	 int lenShablon = strlen(resultBuffer);
+
+	 if(lenBuffer > lenShablon)
+	 {
+		  char strTemp[sizeof(resultBuffer)] = "0";
+		  strcat(resultBuffer, strTemp);
+	 }
+
+	 lenShablon = strlen(resultBuffer);
+	 int offset = lenShablon - lenBuffer;
+
+	 strncpy(resultBuffer+offset, buffer, sizeBuffer);
 }
 
-char* firstABC(char* str)
+bool CreateBatFile(std::string &CommandLine, const char *outFile, const char *outDir)
 {
-    while( *str ){
-       if( (*str >= 'a' && *str <= 'z') || (*str >= 'A' && *str <= 'Z') ) return str;
-       str++;
-    }
-    return NULL;
-}
+	 std::string::size_type len = CommandLine.size();
 
-bool askNumber(const char* str)
-{
-    if( *str >= '1' && *str <= '9' ){
-            return true;
-    }
+	while (true)
+	{
+		  if(CommandLine[len] == '+') {CommandLine[len] = '\0'; break;}
+		  --len;
+	}
 
-    return false;
+	 CommandLine = CommandLine.c_str();
+	 std::string commadBatFile = "COPY /B /-Y " + CommandLine + outFile;
+	 commadBatFile +=  '\n';
+	 commadBatFile +=  "PAUSE";
+
+	 std::string batFile = outDir;
+	 batFile += outFile;
+	 batFile += ".bat";
+
+	 FILE * pBatFile;
+	 pBatFile = fopen (batFile.c_str(),"w");
+
+	 if (pBatFile!=NULL)
+	 {
+		  fputs (commadBatFile.c_str(),pBatFile);
+		  fclose (pBatFile);
+	 }
+	 return false;
 }
 

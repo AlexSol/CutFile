@@ -1,15 +1,15 @@
+//#include <windows.h>
 #include "FileIO.h"
-#include <iostream>
-
 FileIO::FileIO()
 {
-    //ctor
+    this->hKernel32 = ::GetModuleHandle("kernel32.dll");
+    this->GetFileSizeEx = (FileSize)::GetProcAddress(this->hKernel32, "GetFileSizeEx");
 }
 
 FileIO::~FileIO()
 {
     if(hFile != NULL)
-        CloseHandle(hFile);
+        ::CloseHandle(hFile);
 }
 
 DWORD FileIO::GetErro(){
@@ -19,7 +19,9 @@ DWORD FileIO::GetErro(){
 bool FileIO::FileOpen(const TCHAR* FileName, DWORD dwDesiredAccess)
 {
     this->hFile = ::CreateFile(FileName, dwDesiredAccess,FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL ,NULL);
-
+    this->ErrorCode =  ::GetLastError();
+    if(this->ErrorCode == 0) {return true;}
+    return false;
     if( this->hFile == INVALID_HANDLE_VALUE){
         this->ErrorCode =  ::GetLastError();
         return false;
@@ -29,27 +31,29 @@ bool FileIO::FileOpen(const TCHAR* FileName, DWORD dwDesiredAccess)
 
 bool FileIO::FileOpen(const TCHAR* FileName, DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwCreationDisposition)
 {
-    this->hFile = ::CreateFile(FileName, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition , FILE_FLAG_SEQUENTIAL_SCAN | FILE_ATTRIBUTE_NORMAL,NULL);
-
+    this->hFile = ::CreateFile(FileName, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition , /*FILE_FLAG_SEQUENTIAL_SCAN | */FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,NULL);
+    this->ErrorCode =  ::GetLastError();
+    if(this->ErrorCode == 0) {return true;}
+    return false;
     if( this->hFile == INVALID_HANDLE_VALUE){
-        this->ErrorCode =  ::GetLastError();
+        this->ErrorCode = ::GetLastError();
         return false;
     }
 	return true;
 }
 
-bool FileIO::Read(void* lpBuffer, DWORD dwBytesToRead, DWORD& nBytesRead )
+bool FileIO::Read(void *lpBuffer, const DWORD dwBytesToRead, DWORD *nBytesRead )
 {
-   bool bResult = ::ReadFile( this->hFile, lpBuffer, dwBytesToRead, &nBytesRead, NULL);
+   bool bResult = ::ReadFile( this->hFile, lpBuffer, dwBytesToRead, nBytesRead, NULL);
     this->ErrorCode = ::GetLastError();
 
-    if( bResult != NULL && nBytesRead == 0){
+    if( bResult != 0 && nBytesRead == 0){
         return false;
     }
     return true;
 }
 
-bool FileIO::Write(void* lpBuffer, DWORD dwBytesToWrite, DWORD* nBytesWrite)
+bool FileIO::Write(void *lpBuffer, const DWORD dwBytesToWrite, DWORD *nBytesWrite)
 {
     bool bResult;
 
@@ -57,7 +61,7 @@ bool FileIO::Write(void* lpBuffer, DWORD dwBytesToWrite, DWORD* nBytesWrite)
 
     this->ErrorCode = ::GetLastError();
 
-    if(bResult == NULL){
+    if(bResult == 0){
         return false;
     }
     return true;
@@ -65,7 +69,7 @@ bool FileIO::Write(void* lpBuffer, DWORD dwBytesToWrite, DWORD* nBytesWrite)
 
 bool FileIO::Delete(TCHAR* FileName)
 {
-   if( DeleteFile(FileName) != NULL){
+   if( DeleteFile(FileName) != 0 ){
         return true;
    }
 
@@ -82,7 +86,7 @@ bool FileIO::SetPointer(LONGLONG llDistanceToMove, DWORD dwMoveMethod)
     bool bResult = ::SetFilePointerEx(this->hFile, pointer, NULL, dwMoveMethod);
     this->ErrorCode = ::GetLastError();
 
-    if(bResult != NULL)
+    if(bResult != 0)
     {
         return true;
     }
@@ -92,22 +96,12 @@ bool FileIO::SetPointer(LONGLONG llDistanceToMove, DWORD dwMoveMethod)
 
 LONGLONG FileIO::GetSize()
 {
-    typedef BOOL (WINAPI *FileSize)(HANDLE, PLARGE_INTEGER);
-
-    FileSize GetFileSizeEx;
     LARGE_INTEGER dataSize;
-
-    HMODULE hKernel32 = ::GetModuleHandle("kernel32.dll");
-
-    if(hKernel32 != NULL){
-            GetFileSizeEx = (FileSize)GetProcAddress(hKernel32, "GetFileSizeEx");
-
-            if(GetFileSizeEx != NULL){
-                if((*GetFileSizeEx)(hFile, &dataSize) != 0 ){
-                    ErrorCode =  GetLastError();
-                    return dataSize.QuadPart;
-                }
-            }
+    if(GetFileSizeEx != NULL){
+        if((*GetFileSizeEx)(hFile, &dataSize) != 0 ){
+            this->ErrorCode =  GetLastError();
+                return dataSize.QuadPart;
+        }
     }
     return 0;
 }

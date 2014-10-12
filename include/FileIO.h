@@ -1,13 +1,14 @@
 #ifndef FILEIO_H
 #define FILEIO_H
 #include <windows.h>
-#include <iostream>
-#include <string>
+
+typedef BOOL (WINAPI *FileSize)(HANDLE, PLARGE_INTEGER);
+
 class FileIO
 {
     public:
         FileIO();
-        virtual ~FileIO();
+        ~FileIO();
 
         DWORD GetErro();
 
@@ -15,9 +16,11 @@ class FileIO
 
        	bool FileOpen(const TCHAR* , DWORD dwDesiredAccess, DWORD dwShareMode, DWORD dwCreationDisposition);
 
-       	bool Read(void* lpBuffer, DWORD dwBytesToRead, DWORD& nBytesRead );
+       	bool Read(void *lpBuffer, const DWORD dwBytesToRead, DWORD *nBytesRead );
 
-       	bool Write(void* lpBuffer, DWORD dwBytesToWrite, DWORD* nBytesWrite);
+       	bool Write(void *lpBuffer, const  DWORD dwBytesToWrite, DWORD *nBytesWrite);
+
+       	void Close(){ if(hFile != NULL){ ::CloseHandle(hFile);} };
 
        	bool SetPointer(LONGLONG llDistanceToMove, DWORD dwMoveMethod);
 
@@ -31,6 +34,9 @@ class FileIO
         HANDLE hFile;
 
         DWORD ErrorCode;
+        HMODULE hKernel32;
+        FileSize GetFileSizeEx;
        // char* FileName;
 };
+
 #endif // FILEIO_H

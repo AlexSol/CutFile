@@ -1,0 +1,23 @@
+# depslib dependency file v1.0
+1413132164 source:c:\test_lessen\msplitter\main.cpp
+	<memory>
+	<cstdio>
+	<vector>
+	<string>
+	<ctype.h>
+	"FileIO.h"
+	"version.h"
+
+1413132150 c:\test_lessen\msplitter\version.h
+
+1413006936 source:c:\test_lessen\msplitter\src\fileio.cpp
+	"FileIO.h"
+
+1413107147 c:\test_lessen\msplitter\include\fileio.h
+	<windows.h>
+
+1413007138 source:c:\test_lessen\msplitter\src\dog.cpp
+	"Dog.h"
+
+1413007167 c:\test_lessen\msplitter\include\dog.h
+
