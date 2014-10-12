@@ -1,7 +1,7 @@
 mSplit File
 ===========
 console file splitter. The program is available on Windows.
-
+```
 Usege: mSplit [-sb] [SIZE suffix] [in-file_name] [out-directory]
 
 Commands:
@@ -16,3 +16,4 @@ Suffixes:
 	t: Terabyte
 
 Examples: mSplit -sb 50m filename
+```
